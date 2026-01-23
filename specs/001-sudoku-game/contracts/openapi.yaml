@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: Sudoku Lite (No External API)
+  version: 0.0.1
+  description: |
+    This project is a static, client-only web application with no external API.
+    All puzzle generation and gameplay logic runs in the browser.
+servers: []
+paths: {}
+components: {}

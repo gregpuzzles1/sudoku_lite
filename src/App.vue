@@ -1,0 +1,554 @@
+<template>
+  <div id="app">
+    <header class="app-header">
+      <div class="header-left">
+        <h1 class="app-title">
+          Sudoku Lite
+        </h1>
+      </div>
+      <div class="header-controls">
+        <select
+          id="difficulty-select"
+          v-model="dropdownValue"
+          class="new-game-select"
+          :disabled="isGenerating"
+          @change="handleDifficultyChange"
+        >
+          <option value="" disabled selected hidden>{{ isGenerating ? 'Generating...' : 'New Game' }}</option>
+          <option value="Beginner">Beginner</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Advanced">Advanced</option>
+          <option value="Expert">Expert</option>
+          <option value="Master">Master</option>
+          <option value="Extreme">Extreme</option>
+        </select>
+      </div>
+    </header>
+
+    <main class="app-main">
+
+      <div class="game-area">
+        <SudokuGrid
+          :grid="gridToRender"
+          :active-cell="activeCell"
+          :related-cells="relatedCells"
+          :same-number-cells="sameNumberCells"
+          :completed-rows="completedRows"
+          :completed-cols="completedCols"
+          :completed-boxes="completedBoxes"
+          @cell-click="handleCellClick"
+        />
+
+        <ControlBar
+          v-if="puzzle"
+          :pencil-mode="pencilMode"
+          :can-undo="canUndo"
+          @toggle-pencil="togglePencilMode"
+          @undo="undo"
+          @erase="eraseCell"
+        />
+
+        <NumberRow
+          @select="handleNumberSelect"
+        />
+      </div>
+
+      <div
+        v-if="!puzzle"
+        class="welcome"
+      >
+        <p>Click "New Game" and select a difficulty to start playing!</p>
+      </div>
+    </main>
+
+    <section class="content-section">
+      <h2>How to Play Sudoku</h2>
+      <p>
+        Sudoku is a logic-based number puzzle where the objective is to fill a 9×9 grid with digits 
+        so that each column, each row, and each of the nine 3×3 sub-grids contains all digits from 1 to 9.
+      </p>
+      <h3>Rules</h3>
+      <ul>
+        <li>Each row must contain the numbers 1-9, without repetition</li>
+        <li>Each column must contain the numbers 1-9, without repetition</li>
+        <li>Each 3×3 box must contain the numbers 1-9, without repetition</li>
+        <li>Some cells are pre-filled (given) and cannot be changed</li>
+        <li>Numbers that violate these rules will be marked in red</li>
+      </ul>
+      <h3>Controls</h3>
+      <ul>
+        <li><strong>Mouse/Touch:</strong> Click or tap cells and number buttons</li>
+        <li><strong>Keyboard:</strong> Use arrow keys to navigate, 1-9 to enter numbers</li>
+        <li><strong>Pencil Mode (P):</strong> Add small notes to cells for tracking possibilities</li>
+        <li><strong>Undo (U):</strong> Reverse your last action</li>
+        <li><strong>Erase (Delete/Backspace):</strong> Clear the selected cell</li>
+      </ul>
+    </section>
+    <section class="content-section">
+      <h2 class="about-heading">About Sudoku</h2>
+      <p>
+        Sudoku originated in the late 19th century as "Number Place" but gained worldwide popularity 
+        in 2004 when it was introduced to the international market. The name "Sudoku" comes from the 
+        Japanese phrase "Sūji wa dokushin ni kagiru" (数字は独身に限る), meaning "the digits must be single."
+      </p>
+      <p>
+        While the modern puzzle was popularized in Japan, its roots trace back to the Latin squares 
+        studied by Swiss mathematician Leonhard Euler in the 18th century. Today, Sudoku appears in 
+        newspapers and puzzle books worldwide, enjoyed by millions for its perfect balance of logic 
+        and challenge.
+      </p>
+    </section>
+
+    <footer class="app-footer">
+      <p>© {{ copyrightYears }} Greg Christian</p>
+      <nav class="footer-nav">
+        <a
+          href="https://github.com/GREGP/sudoku_lite/blob/main/LICENSE"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          MIT License
+        </a>
+        <span class="separator">·</span>
+        <a
+          href="https://github.com/GREGP/sudoku_lite"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Project Repo
+        </a>
+        <span class="separator">·</span>
+        <a
+          href="https://github.com/GREGP/sudoku_lite/issues/new"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open an Issue
+        </a>
+      </nav>
+    </footer>
+
+    <WinModal
+      :show="showWinModal"
+      @close="showWinModal = false"
+      @new-game="handleNewGame"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import confetti from 'canvas-confetti'
+import { createCell } from './game/types'
+import type { Difficulty } from './game/types'
+import { useGame } from './game/useGame'
+import SudokuGrid from './components/SudokuGrid.vue'
+import NumberRow from './components/NumberRow.vue'
+import WinModal from './components/WinModal.vue'
+import ControlBar from './components/ControlBar.vue'
+
+const {
+  gameState,
+  puzzle,
+  grid,
+  activeCell,
+  pencilMode,
+  canUndo,
+  isSolved,
+  newGame,
+  selectCell,
+  placeNumber,
+  togglePencilMode,
+  undo,
+  eraseCell,
+  getRelatedCells,
+  getSameNumberCells
+} = useGame()
+
+const selectedDifficulty = ref<Difficulty>('Intermediate')
+const dropdownValue = ref<string>('')
+const currentYear = computed(() => new Date().getFullYear())
+const copyrightYears = computed(() => `2025-${currentYear.value}`)
+const showWinModal = ref(false)
+const isGenerating = ref(false)
+const relatedCells = computed<Set<string>>(() =>
+  puzzle.value ? getRelatedCells() : new Set<string>()
+)
+const sameNumberCells = computed<Set<string>>(() =>
+  puzzle.value ? getSameNumberCells() : new Set<string>()
+)
+const completedRows = computed<Set<number>>(() =>
+  puzzle.value ? gameState.value.completedRows : new Set<number>()
+)
+const completedCols = computed<Set<number>>(() =>
+  puzzle.value ? gameState.value.completedCols : new Set<number>()
+)
+const completedBoxes = computed<Set<number>>(() =>
+  puzzle.value ? gameState.value.completedBoxes : new Set<number>()
+)
+const emptyGrid = computed(() =>
+  Array.from({ length: 9 }, (_, row) =>
+    Array.from({ length: 9 }, (_, col) => createCell(row, col))
+  )
+)
+const gridToRender = computed(() => (puzzle.value ? grid.value : emptyGrid.value))
+
+async function handleNewGame() {
+  if (isGenerating.value) return
+  isGenerating.value = true
+  showWinModal.value = false
+  await nextTick()
+  setTimeout(() => {
+    newGame(selectedDifficulty.value)
+    isGenerating.value = false
+  }, 0)
+}
+
+async function handleDifficultyChange() {
+  if (dropdownValue.value && dropdownValue.value !== '') {
+    selectedDifficulty.value = dropdownValue.value as Difficulty
+    if (isGenerating.value) return
+    isGenerating.value = true
+    showWinModal.value = false
+    await nextTick()
+    setTimeout(() => {
+      newGame(selectedDifficulty.value)
+      isGenerating.value = false
+      dropdownValue.value = ''
+    }, 0)
+  }
+}
+
+function handleCellClick(row: number, col: number) {
+  if (!puzzle.value) return
+  selectCell(row, col)
+}
+
+function handleNumberSelect(num: number) {
+  if (activeCell.value) {
+    placeNumber(num)
+  }
+}
+
+function handleKeyDown(event: KeyboardEvent) {
+  if (!puzzle.value) return
+
+  const { key } = event
+
+  // Number keys 1-9
+  if (key >= '1' && key <= '9') {
+    event.preventDefault()
+    handleNumberSelect(parseInt(key))
+    return
+  }
+
+  // Delete/Backspace for erase
+  if (key === 'Delete' || key === 'Backspace') {
+    event.preventDefault()
+    eraseCell()
+    return
+  }
+
+  // P for pencil mode
+  if (key === 'p' || key === 'P') {
+    event.preventDefault()
+    togglePencilMode()
+    return
+  }
+
+  // U for undo
+  if (key === 'u' || key === 'U') {
+    event.preventDefault()
+    undo()
+    return
+  }
+
+  // 
+  // Number keys 1-9
+  if (key >= '1' && key <= '9') {
+    event.preventDefault()
+    handleNumberSelect(parseInt(key))
+    return
+  }
+
+  // Arrow key navigation
+  if (!activeCell.value) return
+
+  const { row, col } = activeCell.value
+  let newRow = row
+  let newCol = col
+
+  switch (key) {
+    case 'ArrowUp':
+      event.preventDefault()
+      newRow = Math.max(0, row - 1)
+      break
+    case 'ArrowDown':
+      event.preventDefault()
+      newRow = Math.min(8, row + 1)
+      break
+    case 'ArrowLeft':
+      event.preventDefault()
+      newCol = Math.max(0, col - 1)
+      break
+    case 'ArrowRight':
+      event.preventDefault()
+      newCol = Math.min(8, col + 1)
+      break
+  }
+
+  if (newRow !== row || newCol !== col) {
+    selectCell(newRow, newCol)
+  }
+}
+
+// Watch for puzzle solved
+watch(isSolved, (solved) => {
+  if (solved) {
+    showWinModal.value = true
+    // Trigger confetti
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    })
+  }
+})
+
+// Keyboard event listeners
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
+</script>
+
+<style scoped>
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.app-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
+.app-subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-secondary);
+  font-weight: 500;
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.new-game-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.new-game-label {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.new-game-select {
+  padding: var(--space-sm) var(--space-md);
+  padding-right: calc(var(--space-md) + 20px);
+  font-size: var(--font-size-base);
+  font-family: var(--font-family);
+  font-weight: 600;
+  color: white;
+  background-color: var(--color-correct);
+  border: 2px solid var(--color-correct);
+  border-radius: 6px;
+  cursor: pointer;
+  width: 200px;
+  transition: background-color var(--transition-fast);
+}
+
+.new-game-select:hover:not(:disabled) {
+  background-color: #229954;
+}
+
+.new-game-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.3);
+}
+
+.new-game-select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.new-game-select option {
+  background-color: white;
+  color: var(--color-text);
+  font-weight: normal;
+  padding: var(--space-sm);
+}
+
+.new-game-select option:hover {
+  background-color: var(--color-highlight);
+}
+
+.game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.welcome {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--color-secondary);
+  font-size: var(--font-size-lg);
+}
+
+@media (max-width: 768px) {
+  .app-title {
+    font-size: 2rem;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-controls {
+    justify-content: center;
+  }
+
+  .new-game-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-xs);
+  }
+
+  .new-game-label {
+    text-align: center;
+  }
+
+  .new-game-select {
+    width: 100%;
+  }
+}
+
+.content-section {
+  max-width: 800px;
+  margin: var(--space-xl) auto;
+  padding: 0 var(--space-lg);
+  color: var(--color-text);
+}
+
+.content-section + .content-section {
+  margin-top: calc(var(--space-xl) * 1.5);
+}
+
+.section-spacer {
+  height: var(--space-lg);
+}
+
+.about-heading {
+  margin-top: var(--space-lg);
+}
+
+.content-section h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+  color: var(--color-text);
+  letter-spacing: 0.2px;
+}
+
+.content-section h3 {
+  font-size: var(--font-size-lg);
+  margin-top: var(--space-lg);
+  margin-bottom: var(--space-sm);
+  color: var(--color-primary);
+}
+
+.content-section p {
+  line-height: 1.8;
+  margin-bottom: var(--space-md);
+  color: var(--color-secondary);
+}
+
+.content-section ul {
+  list-style-position: inside;
+  margin-bottom: var(--space-md);
+  padding-left: var(--space-md);
+}
+
+.content-section li {
+  margin-bottom: var(--space-sm);
+  line-height: 1.6;
+  color: var(--color-secondary);
+}
+
+.app-footer {
+  margin-top: var(--space-xl);
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-secondary);
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.app-footer p {
+  margin-bottom: var(--space-sm);
+}
+
+.footer-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.footer-nav a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.footer-nav a:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.separator {
+  color: var(--color-border);
+}
+</style>
