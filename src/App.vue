@@ -103,7 +103,7 @@
       <p>© {{ copyrightYears }} Greg Christian</p>
       <nav class="footer-nav">
         <a
-          href="https://github.com/GREGP/sudoku_lite/blob/main/LICENSE"
+          href="https://github.com/gregpuzzles1/sudoku_lite/blob/main/LICENSE"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -111,7 +111,7 @@
         </a>
         <span class="separator">·</span>
         <a
-          href="https://github.com/GREGP/sudoku_lite"
+          href="https://github.com/gregpuzzles1/sudoku_lite"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -119,7 +119,7 @@
         </a>
         <span class="separator">·</span>
         <a
-          href="https://github.com/GREGP/sudoku_lite/issues/new"
+          href="https://github.com/gregpuzzles1/sudoku_lite/issues"
           target="_blank"
           rel="noopener noreferrer"
         >
