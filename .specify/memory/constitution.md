@@ -1,50 +1,108 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report - Constitution Update
+Version: 0.0.0 → 1.0.0
+Change Type: MAJOR (Initial constitution creation)
+
+Modified Principles: NONE (initial creation)
+Added Sections:
+  - I. Static Assets Only
+  - II. Main Branch Deployment
+  - III. GitHub Actions CI/CD
+  - Deployment Requirements
+  - Quality Standards
+
+Templates Status:
+  ✅ plan-template.md - Constitution Check section compatible
+  ✅ spec-template.md - User story/requirements alignment maintained
+  ✅ tasks-template.md - Task structure supports constitution principles
+
+Follow-up TODOs: NONE
+-->
+
+# Sudoku Lite Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Static Assets Only
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+All deployable artifacts MUST be static files (HTML, CSS, JavaScript, images, fonts). No server-side processing, no backend APIs, no build-time server dependencies. All functionality MUST execute entirely in the browser. External API calls are permitted but MUST NOT be required for core functionality.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Rationale**: GitHub Pages serves only static content. Any dynamic functionality must be client-side to ensure deployment compatibility.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Main Branch Deployment
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+Production deployment MUST occur exclusively from the `main` branch. All features MUST be merged to `main` via pull request before deployment. Direct commits to `main` are PROHIBITED except for emergency hotfixes, which MUST be documented in commit messages with "HOTFIX:" prefix.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Rationale**: Single-branch deployment ensures predictable releases, simplifies CI/CD configuration, and maintains production stability.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. GitHub Actions CI/CD
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Deployment MUST be automated via GitHub Actions workflows. Manual deployments are PROHIBITED. The workflow MUST validate all assets before deployment (linting, link checking, asset optimization). Failed validation MUST block deployment.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**Rationale**: Automated deployment eliminates human error, ensures consistency, and provides audit trail through workflow logs.
+
+## Deployment Requirements
+
+### Asset Optimization
+
+- All images MUST be optimized for web delivery
+- CSS and JavaScript MUST be minified in production builds
+- Total page load size SHOULD NOT exceed 5MB for initial page load
+- Assets MUST include cache headers via GitHub Pages defaults
+
+### Browser Compatibility
+
+- Application MUST function in latest two major versions of Chrome, Firefox, Safari, Edge
+- JavaScript features MUST use ES6+ with documented exceptions if ES5 needed
+- CSS MUST validate against standard specifications
+- Progressive enhancement: core functionality MUST work without JavaScript where feasible
+
+### Repository Structure
+
+```
+/
+├── index.html          # Required entry point
+├── assets/             # Static assets (CSS, JS, images)
+├── .github/
+│   └── workflows/
+│       └── deploy.yml  # Required deployment workflow
+└── .specify/           # Project documentation and templates
+```
+
+## Quality Standards
+
+### Validation Gates
+
+Before merge to `main`, code MUST pass:
+- HTML validation (W3C validator or equivalent)
+- CSS validation
+- JavaScript linting (ESLint or equivalent)
+- Broken link checking
+- Accessibility audit (WCAG 2.1 Level A minimum)
+
+### Documentation
+
+- README.md MUST include: project description, local development setup, deployment instructions
+- All configuration files MUST include inline comments explaining non-obvious settings
+- Feature specifications MUST document browser compatibility requirements
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution defines the non-negotiable principles for Sudoku Lite development and deployment. All pull requests MUST comply with these principles. Violations require explicit justification in PR descriptions and approval from repository maintainer.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+### Amendment Process
+
+Constitution amendments require:
+1. Proposal documented in GitHub issue with rationale
+2. Impact analysis on existing features and deployment pipeline
+3. Approval from repository maintainer
+4. Version bump following semantic versioning (MAJOR for principle changes, MINOR for new sections, PATCH for clarifications)
+5. Update of all dependent templates and documentation
+
+### Version Semantics
+
+- **MAJOR**: Backward-incompatible principle changes, removed principles, redefined deployment requirements
+- **MINOR**: New principles added, expanded sections, new quality gates
+- **PATCH**: Clarifications, typo fixes, formatting, non-semantic refinements
+
+**Version**: 1.0.0 | **Ratified**: 2026-01-23 | **Last Amended**: 2026-01-23
