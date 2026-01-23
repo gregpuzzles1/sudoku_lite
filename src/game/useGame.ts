@@ -72,6 +72,35 @@ export function useGame() {
   }
 
   /**
+   * Remove pencil notes from related cells
+   */
+  function removeNotesFromRelatedCells(row: number, col: number, value: number): void {
+    const state = gameState.value
+    if (!state.puzzle) return
+
+    const box = Math.floor(row / 3) * 3 + Math.floor(col / 3)
+    const boxRow = Math.floor(box / 3) * 3
+    const boxCol = (box % 3) * 3
+
+    // Remove from row
+    for (let c = 0; c < 9; c++) {
+      state.puzzle.grid[row][c].notes.delete(value)
+    }
+
+    // Remove from column
+    for (let r = 0; r < 9; r++) {
+      state.puzzle.grid[r][col].notes.delete(value)
+    }
+
+    // Remove from box
+    for (let r = boxRow; r < boxRow + 3; r++) {
+      for (let c = boxCol; c < boxCol + 3; c++) {
+        state.puzzle.grid[r][c].notes.delete(value)
+      }
+    }
+  }
+
+  /**
    * Place a number in the active cell
    */
   function placeNumber(value: number): void {
@@ -111,6 +140,9 @@ export function useGame() {
 
       cell.value = value
       cell.notes.clear()
+
+      // Remove this number from pencil notes in related cells
+      removeNotesFromRelatedCells(row, col, value)
 
       // Record move
       const move: Move = {
