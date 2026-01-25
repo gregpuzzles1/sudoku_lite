@@ -83,4 +83,18 @@ function handleClick(num: number, event: MouseEvent) {
     gap: 3px;
   }
 }
+
+@media (min-width: 600px) and (max-width: 900px) {
+  .number-row {
+    gap: var(--space-md);
+  }
+}
+
+@media (min-width: 600px) and (max-width: 900px) and (orientation: portrait) {
+  .number-button {
+    width: 54px;
+    height: 54px;
+    font-size: 1.85rem;
+  }
+}
 </style>

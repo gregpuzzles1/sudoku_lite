@@ -162,4 +162,19 @@ function handleClick() {
     line-height: 1;
   }
 }
+
+@media (min-width: 600px) and (max-width: 900px) and (orientation: portrait) {
+  .sudoku-cell {
+    width: 54px;
+    height: 54px;
+  }
+
+  .cell-value {
+    font-size: 2rem;
+  }
+
+  .note {
+    font-size: 0.7rem;
+  }
+}
 </style>

@@ -521,6 +521,14 @@ onUnmounted(() => {
   }
 }
 
+@media (min-width: 600px) and (max-width: 900px) {
+  .new-game-select {
+    width: auto;
+    min-width: 200px;
+    max-width: 240px;
+  }
+}
+
 .content-section {
   max-width: 800px;
   margin: var(--space-xl) auto;
