@@ -221,7 +221,7 @@ export function useGame() {
     if (!state.puzzle) return
 
     // Validate grid
-    validateGrid(state.puzzle.grid)
+    validateGrid(state.puzzle.grid, state.puzzle.solution)
 
     // Update completed sections
     const newCompletedRows = getCompletedRows(state.puzzle.grid)
@@ -233,7 +233,7 @@ export function useGame() {
     state.completedBoxes = newCompletedBoxes
 
     // Check if puzzle is solved
-    state.isSolved = isPuzzleSolved(state.puzzle.grid)
+    state.isSolved = isPuzzleSolved(state.puzzle.grid, state.puzzle.solution)
   }
 
   /**

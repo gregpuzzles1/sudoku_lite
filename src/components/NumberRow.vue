@@ -5,7 +5,7 @@
       :key="num"
       class="number-button"
       :aria-label="`Enter number ${num}`"
-      @click="handleClick(num)"
+      @click="handleClick(num, $event)"
     >
       {{ num }}
     </button>
@@ -19,7 +19,8 @@ const emit = defineEmits<{
   select: [number: number]
 }>()
 
-function handleClick(num: number) {
+function handleClick(num: number, event: MouseEvent) {
+  ;(event.currentTarget as HTMLButtonElement | null)?.blur()
   emit('select', num)
 }
 </script>
@@ -48,6 +49,8 @@ function handleClick(num: number) {
   cursor: pointer;
   transition: all var(--transition-fast);
   font-family: var(--font-family);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .number-button:hover {
@@ -59,6 +62,14 @@ function handleClick(num: number) {
 
 .number-button:active {
   transform: translateY(0);
+}
+
+.number-button:focus,
+.number-button:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: #f5f5f5 !important;
+  color: var(--color-text) !important;
 }
 
 @media (max-width: 768px) {

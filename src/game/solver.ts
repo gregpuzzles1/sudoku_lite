@@ -27,6 +27,26 @@ function isValid(grid: number[][], row: number, col: number, num: number): boole
 }
 
 /**
+ * Validate that the current grid has no conflicts among filled cells
+ */
+function isValidInitialGrid(grid: number[][]): boolean {
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      const value = grid[row][col]
+      if (value === 0) continue
+
+      grid[row][col] = 0
+      const valid = isValid(grid, row, col, value)
+      grid[row][col] = value
+
+      if (!valid) return false
+    }
+  }
+
+  return true
+}
+
+/**
  * Find next empty cell (returns null if grid is complete)
  */
 function findEmptyCell(grid: number[][]): { row: number; col: number } | null {
@@ -46,6 +66,8 @@ function findEmptyCell(grid: number[][]): { row: number; col: number } | null {
  * Returns true if solvable, false otherwise
  */
 export function solve(grid: number[][]): boolean {
+  if (!isValidInitialGrid(grid)) return false
+
   const emptyCell = findEmptyCell(grid)
   
   // If no empty cells, puzzle is solved
@@ -78,6 +100,8 @@ export function solve(grid: number[][]): boolean {
 export function hasUniqueSolution(grid: number[][]): boolean {
   // Create a copy to avoid modifying original
   const gridCopy = grid.map(row => [...row])
+
+  if (!isValidInitialGrid(gridCopy)) return false
   
   let solutionCount = 0
   const maxSolutions = 2 // Only need to find 2 to know it's not unique
@@ -114,41 +138,45 @@ export function hasUniqueSolution(grid: number[][]): boolean {
  * Uses randomized backtracking for variety
  */
 export function generateCompleteSolution(): number[][] {
-  const grid: number[][] = Array(9).fill(0).map(() => Array(9).fill(0))
+  const base = 3
+  const side = base * base
 
-  function fillGrid(row: number, col: number): boolean {
-    // Move to next row if at end of column
-    if (col === 9) {
-      row++
-      col = 0
-    }
-
-    // If all rows filled, success
-    if (row === 9) return true
-
-    // Generate random order of numbers 1-9
-    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-    for (let i = numbers.length - 1; i > 0; i--) {
+  const shuffle = <T>(array: T[]): T[] => {
+    const arr = [...array]
+    for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-      ;[numbers[i], numbers[j]] = [numbers[j], numbers[i]]
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
     }
-
-    // Try each number
-    for (const num of numbers) {
-      if (isValid(grid, row, col, num)) {
-        grid[row][col] = num
-
-        if (fillGrid(row, col + 1)) {
-          return true
-        }
-
-        grid[row][col] = 0
-      }
-    }
-
-    return false
+    return arr
   }
 
-  fillGrid(0, 0)
+  const pattern = (row: number, col: number): number =>
+    (base * (row % base) + Math.floor(row / base) + col) % side
+
+  const rowsBase = [...Array(base).keys()]
+  const colsBase = [...Array(base).keys()]
+
+  const rowBands = shuffle(rowsBase)
+  const colBands = shuffle(colsBase)
+
+  const rows = rowBands.flatMap((band) =>
+    shuffle(rowsBase).map((r) => band * base + r)
+  )
+  const cols = colBands.flatMap((band) =>
+    shuffle(colsBase).map((c) => band * base + c)
+  )
+
+  const nums = shuffle([...Array(side).keys()]).map((n) => n + 1)
+
+  const grid: number[][] = Array(side)
+    .fill(0)
+    .map(() => Array(side).fill(0))
+
+  for (let r = 0; r < side; r++) {
+    for (let c = 0; c < side; c++) {
+      grid[r][c] = nums[pattern(rows[r], cols[c])]
+    }
+  }
+
   return grid
 }
