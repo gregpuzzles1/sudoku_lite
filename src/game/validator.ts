@@ -39,7 +39,7 @@ export function hasConflict(grid: Cell[][], row: number, col: number, value: num
  * Validate entire grid and update cell states
  * Marks cells with conflicts as 'error'
  */
-export function validateGrid(grid: Cell[][]): void {
+export function validateGrid(grid: Cell[][], solution?: number[][]): void {
   // Reset all non-empty cells to 'filled'
   for (let row = 0; row < 9; row++) {
     for (let col = 0; col < 9; col++) {
@@ -56,8 +56,13 @@ export function validateGrid(grid: Cell[][]): void {
   for (let row = 0; row < 9; row++) {
     for (let col = 0; col < 9; col++) {
       const cell = grid[row][col]
-      if (cell.value !== null && hasConflict(grid, row, col, cell.value)) {
-        cell.state = 'error'
+      if (cell.value !== null) {
+        const violatesRules = hasConflict(grid, row, col, cell.value)
+        const violatesSolution = solution ? cell.value !== solution[row][col] : false
+
+        if (violatesRules || violatesSolution) {
+          cell.state = 'error'
+        }
       }
     }
   }
@@ -118,7 +123,16 @@ export function isBoxComplete(grid: Cell[][], box: number): boolean {
 /**
  * Check if the entire puzzle is solved correctly
  */
-export function isPuzzleSolved(grid: Cell[][]): boolean {
+export function isPuzzleSolved(grid: Cell[][], solution?: number[][]): boolean {
+  if (solution) {
+    for (let row = 0; row < 9; row++) {
+      for (let col = 0; col < 9; col++) {
+        if (grid[row][col].value !== solution[row][col]) return false
+      }
+    }
+    return true
+  }
+
   // Check all rows
   for (let row = 0; row < 9; row++) {
     if (!isRowComplete(grid, row)) return false

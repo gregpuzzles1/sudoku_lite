@@ -28,16 +28,29 @@
     <main class="app-main">
 
       <div class="game-area">
-        <SudokuGrid
-          :grid="gridToRender"
-          :active-cell="activeCell"
-          :related-cells="relatedCells"
-          :same-number-cells="sameNumberCells"
-          :completed-rows="completedRows"
-          :completed-cols="completedCols"
-          :completed-boxes="completedBoxes"
-          @cell-click="handleCellClick"
-        />
+        <div class="grid-wrapper">
+          <SudokuGrid
+            :grid="gridToRender"
+            :active-cell="activeCell"
+            :related-cells="relatedCells"
+            :same-number-cells="sameNumberCells"
+            :completed-rows="completedRows"
+            :completed-cols="completedCols"
+            :completed-boxes="completedBoxes"
+            @cell-click="handleCellClick"
+          />
+          <div
+            v-if="isGenerating"
+            class="generating-overlay"
+            aria-live="polite"
+            aria-label="Generating puzzle"
+          >
+            <div class="generating-badge">
+              <span class="spinner" aria-hidden="true"></span>
+              Generating...
+            </div>
+          </div>
+        </div>
 
         <ControlBar
           v-if="puzzle"
@@ -424,6 +437,52 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: var(--space-lg);
+}
+
+.grid-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.generating-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(2px);
+  border-radius: 10px;
+}
+
+.generating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: 999px;
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  color: var(--color-text);
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .welcome {
