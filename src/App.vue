@@ -29,6 +29,15 @@
 
       <div class="game-area">
         <div class="grid-wrapper">
+          <div
+            v-if="showProgressTooltip"
+            class="progress-tooltip"
+            role="status"
+            aria-live="polite"
+          >
+            <span class="tooltip-emoji">😊</span>
+            <span class="tooltip-text">{{ progressTooltip }}</span>
+          </div>
           <SudokuGrid
             :grid="gridToRender"
             :active-cell="activeCell"
@@ -62,6 +71,7 @@
         />
 
         <NumberRow
+          :completed-numbers="completedNumbers"
           @select="handleNumberSelect"
         />
       </div>
@@ -199,6 +209,64 @@ const completedCols = computed<Set<number>>(() =>
 const completedBoxes = computed<Set<number>>(() =>
   puzzle.value ? gameState.value.completedBoxes : new Set<number>()
 )
+const completedNumbers = computed<Set<number>>(() => {
+  if (!puzzle.value) return new Set<number>()
+
+  const done = new Set<number>()
+  for (let num = 1; num <= 9; num++) {
+    let allCorrect = true
+    for (let row = 0; row < 9 && allCorrect; row++) {
+      for (let col = 0; col < 9; col++) {
+        if (puzzle.value.solution[row][col] === num) {
+          if (grid.value[row][col].value !== num) {
+            allCorrect = false
+            break
+          }
+        }
+      }
+    }
+
+    if (allCorrect) {
+      done.add(num)
+    }
+  }
+
+  return done
+})
+const totalPlayableCells = computed(() => {
+  if (!puzzle.value) return 0
+  let total = 0
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      if (!puzzle.value.grid[row][col].given) {
+        total += 1
+      }
+    }
+  }
+  return total
+})
+const correctPlayableCells = computed(() => {
+  if (!puzzle.value) return 0
+  let correct = 0
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      const cell = puzzle.value.grid[row][col]
+      if (!cell.given && cell.value === puzzle.value.solution[row][col]) {
+        correct += 1
+      }
+    }
+  }
+  return correct
+})
+const progressPercent = computed(() => {
+  const total = totalPlayableCells.value
+  if (!puzzle.value || total === 0) return 0
+  return Math.floor((correctPlayableCells.value / total) * 100)
+})
+const progressTooltip = ref('')
+const showProgressTooltip = ref(false)
+const shownProgressThresholds = ref<Set<number>>(new Set())
+const progressTooltipTimer = ref<number | null>(null)
 const emptyGrid = computed(() =>
   Array.from({ length: 9 }, (_, row) =>
     Array.from({ length: 9 }, (_, col) => createCell(row, col))
@@ -241,6 +309,20 @@ function handleNumberSelect(num: number) {
   if (activeCell.value) {
     placeNumber(num)
   }
+}
+
+function showProgressThreshold(threshold: number) {
+  const message = threshold === 25 ? '25% Done' : `${threshold}% Completed`
+  progressTooltip.value = message
+  showProgressTooltip.value = true
+
+  if (progressTooltipTimer.value !== null) {
+    window.clearTimeout(progressTooltipTimer.value)
+  }
+
+  progressTooltipTimer.value = window.setTimeout(() => {
+    showProgressTooltip.value = false
+  }, 1600)
 }
 
 function handleKeyDown(event: KeyboardEvent) {
@@ -328,6 +410,30 @@ watch(isSolved, (solved) => {
   }
 })
 
+watch(progressPercent, (percent) => {
+  if (!puzzle.value) return
+
+  const thresholds = [25, 50, 75]
+  const eligible = thresholds.filter(
+    (threshold) => percent >= threshold && !shownProgressThresholds.value.has(threshold)
+  )
+
+  if (eligible.length > 0) {
+    const threshold = eligible[eligible.length - 1]
+    shownProgressThresholds.value.add(threshold)
+    showProgressThreshold(threshold)
+  }
+})
+
+watch(puzzle, () => {
+  shownProgressThresholds.value = new Set()
+  showProgressTooltip.value = false
+  if (progressTooltipTimer.value !== null) {
+    window.clearTimeout(progressTooltipTimer.value)
+    progressTooltipTimer.value = null
+  }
+})
+
 // Keyboard event listeners
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
@@ -335,6 +441,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  if (progressTooltipTimer.value !== null) {
+    window.clearTimeout(progressTooltipTimer.value)
+  }
 })
 </script>
 
@@ -444,6 +553,48 @@ onUnmounted(() => {
   width: 100%;
   display: flex;
   justify-content: center;
+}
+
+.progress-tooltip {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+  font-weight: 600;
+  color: var(--color-text);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.progress-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0 6px;
+  border-style: solid;
+  border-color: #ffffff transparent transparent transparent;
+  filter: drop-shadow(0 -1px 0 var(--color-border));
+}
+
+.tooltip-emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.tooltip-text {
+  font-size: 0.9rem;
+  line-height: 1.1;
 }
 
 .generating-overlay {

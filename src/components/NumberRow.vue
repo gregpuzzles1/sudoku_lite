@@ -4,16 +4,25 @@
       v-for="num in numbers"
       :key="num"
       class="number-button"
-      :aria-label="`Enter number ${num}`"
+      :class="{ completed: props.completedNumbers.has(num) }"
+      :aria-label="props.completedNumbers.has(num) ? `Number ${num} completed` : `Enter number ${num}`"
       @click="handleClick(num, $event)"
     >
-      {{ num }}
+      {{ props.completedNumbers.has(num) ? '✓' : num }}
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
 const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+interface Props {
+  completedNumbers?: Set<number>
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  completedNumbers: () => new Set<number>()
+})
 
 const emit = defineEmits<{
   select: [number: number]
