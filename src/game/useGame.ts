@@ -5,6 +5,7 @@ import type { Difficulty, GameState, Move } from './types'
 import { generatePuzzle } from './generator'
 import { 
   validateGrid, 
+  hasConflict,
   isPuzzleSolved,
   getCompletedRows,
   getCompletedCols,
@@ -139,10 +140,19 @@ export function useGame() {
       const previousNotes = new Set(cell.notes)
 
       cell.value = value
-      cell.notes.clear()
 
-      // Remove this number from pencil notes in related cells
-      removeNotesFromRelatedCells(row, col, value)
+      const violatesRules = hasConflict(state.puzzle.grid, row, col, value)
+      const violatesSolution = state.puzzle.solution
+        ? value !== state.puzzle.solution[row][col]
+        : false
+      const isIncorrect = violatesRules || violatesSolution
+
+      if (!isIncorrect) {
+        cell.notes.clear()
+
+        // Remove this number from pencil notes in related cells
+        removeNotesFromRelatedCells(row, col, value)
+      }
 
       // Record move
       const move: Move = {
@@ -150,7 +160,7 @@ export function useGame() {
         previousValue,
         nextValue: value,
         previousNotes,
-        nextNotes: new Set(),
+        nextNotes: new Set(cell.notes),
         timestamp: Date.now()
       }
       state.history.push(move)

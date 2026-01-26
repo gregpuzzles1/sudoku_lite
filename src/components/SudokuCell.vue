@@ -92,6 +92,10 @@ function handleClick() {
   color: #1976D2;
 }
 
+.cell-given.cell-filled .cell-value {
+  color: #000000;
+}
+
 .cell-error .cell-value {
   color: var(--color-error);
   font-weight: 700;
