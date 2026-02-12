@@ -40,6 +40,11 @@ export interface GameState {
   completedCols: Set<number>
   completedBoxes: Set<number>
   isSolved: boolean
+  strikeCount: number
+  strikeLimit: number
+  strikeRound: 1 | 2
+  isStrikeOut: boolean
+  isGameOver: boolean
 }
 
 // Difficulty configuration: clue count ranges

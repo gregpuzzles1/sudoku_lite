@@ -30,6 +30,20 @@
       <div class="game-area">
         <div class="grid-wrapper">
           <div
+            v-if="puzzle"
+            class="difficulty-label"
+            aria-live="polite"
+          >
+            {{ selectedDifficulty }}
+          </div>
+          <div
+            v-if="puzzle"
+            class="strike-label"
+            aria-live="polite"
+          >
+            {{ strikeText }}
+          </div>
+          <div
             v-if="showProgressTooltip"
             class="progress-tooltip"
             role="status"
@@ -156,6 +170,12 @@
       @close="showWinModal = false"
       @new-game="handleNewGame"
     />
+    <StrikeModal
+      :show="showStrikeModal"
+      :can-second-chance="canSecondChance"
+      @second-chance="handleSecondChance"
+      @game-over="handleGameOver"
+    />
   </div>
 </template>
 
@@ -169,6 +189,7 @@ import SudokuGrid from './components/SudokuGrid.vue'
 import NumberRow from './components/NumberRow.vue'
 import WinModal from './components/WinModal.vue'
 import ControlBar from './components/ControlBar.vue'
+import StrikeModal from './components/StrikeModal.vue'
 
 const {
   gameState,
@@ -178,6 +199,11 @@ const {
   pencilMode,
   canUndo,
   isSolved,
+  strikeCount,
+  strikeLimit,
+  strikeRound,
+  isStrikeOut,
+  isGameOver,
   newGame,
   selectCell,
   placeNumber,
@@ -185,7 +211,10 @@ const {
   undo,
   eraseCell,
   getRelatedCells,
-  getSameNumberCells
+  getSameNumberCells,
+  useSecondChance,
+  endGame,
+  resetGame
 } = useGame()
 
 const selectedDifficulty = ref<Difficulty>('Intermediate')
@@ -194,6 +223,9 @@ const currentYear = computed(() => new Date().getFullYear())
 const copyrightYears = computed(() => `2025-${currentYear.value}`)
 const showWinModal = ref(false)
 const isGenerating = ref(false)
+const strikeText = computed(() => `Strikes ${strikeCount.value}/${strikeLimit.value}`)
+const showStrikeModal = computed(() => Boolean(puzzle.value) && isStrikeOut.value)
+const canSecondChance = computed(() => strikeRound.value === 1 && !isGameOver.value)
 const relatedCells = computed<Set<string>>(() =>
   puzzle.value ? getRelatedCells() : new Set<string>()
 )
@@ -280,7 +312,8 @@ async function handleNewGame() {
   showWinModal.value = false
   await nextTick()
   setTimeout(() => {
-    newGame(selectedDifficulty.value)
+    resetGame()
+    dropdownValue.value = ''
     isGenerating.value = false
   }, 0)
 }
@@ -298,6 +331,14 @@ async function handleDifficultyChange() {
       dropdownValue.value = ''
     }, 0)
   }
+}
+
+function handleSecondChance() {
+  useSecondChance()
+}
+
+function handleGameOver() {
+  endGame()
 }
 
 function handleCellClick(row: number, col: number) {
@@ -550,9 +591,30 @@ onUnmounted(() => {
 
 .grid-wrapper {
   position: relative;
-  width: 100%;
-  display: flex;
+  display: inline-flex;
   justify-content: center;
+  max-width: 100%;
+}
+
+.difficulty-label {
+  position: absolute;
+  top: -22px;
+  left: 33.33%;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  letter-spacing: 0.3px;
+}
+
+.strike-label {
+  position: absolute;
+  top: -22px;
+  left: 66.67%;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  letter-spacing: 0.3px;
+  text-align: left;
 }
 
 .progress-tooltip {
@@ -645,7 +707,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .app-title {
-    font-size: 2rem;
+    font-size: 1.75rem;
   }
 
   .app-header {

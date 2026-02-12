@@ -1,7 +1,7 @@
 // Game state management composable
 
 import { ref, computed } from 'vue'
-import type { Difficulty, GameState, Move } from './types'
+import type { Difficulty, GameState, Move, Puzzle } from './types'
 import { generatePuzzle } from './generator'
 import { 
   validateGrid, 
@@ -13,17 +13,24 @@ import {
 } from './validator'
 
 export function useGame() {
-  // Game state
-  const gameState = ref<GameState>({
-    puzzle: null,
+  const buildState = (puzzle: Puzzle | null): GameState => ({
+    puzzle,
     activeCell: null,
     pencilMode: false,
     history: [],
     completedRows: new Set(),
     completedCols: new Set(),
     completedBoxes: new Set(),
-    isSolved: false
+    isSolved: false,
+    strikeCount: 0,
+    strikeLimit: 3,
+    strikeRound: 1,
+    isStrikeOut: false,
+    isGameOver: false
   })
+
+  // Game state
+  const gameState = ref<GameState>(buildState(null))
 
   // Computed properties
   const puzzle = computed(() => gameState.value.puzzle)
@@ -32,29 +39,29 @@ export function useGame() {
   const pencilMode = computed(() => gameState.value.pencilMode)
   const canUndo = computed(() => gameState.value.history.length > 0)
   const isSolved = computed(() => gameState.value.isSolved)
+  const strikeCount = computed(() => gameState.value.strikeCount)
+  const strikeLimit = computed(() => gameState.value.strikeLimit)
+  const strikeRound = computed(() => gameState.value.strikeRound)
+  const isStrikeOut = computed(() => gameState.value.isStrikeOut)
+  const isGameOver = computed(() => gameState.value.isGameOver)
 
   /**
    * Start a new game with selected difficulty
    */
   function newGame(difficulty: Difficulty): void {
     const newPuzzle = generatePuzzle(difficulty)
-    
-    gameState.value = {
-      puzzle: newPuzzle,
-      activeCell: null,
-      pencilMode: false,
-      history: [],
-      completedRows: new Set(),
-      completedCols: new Set(),
-      completedBoxes: new Set(),
-      isSolved: false
-    }
+    gameState.value = buildState(newPuzzle)
+  }
+
+  function resetGame(): void {
+    gameState.value = buildState(null)
   }
 
   /**
    * Select a cell
    */
   function selectCell(row: number, col: number): void {
+    if (gameState.value.isGameOver || gameState.value.isStrikeOut) return
     gameState.value.activeCell = { row, col }
   }
 
@@ -69,7 +76,35 @@ export function useGame() {
    * Toggle pencil mode
    */
   function togglePencilMode(): void {
+    if (gameState.value.isGameOver || gameState.value.isStrikeOut) return
     gameState.value.pencilMode = !gameState.value.pencilMode
+  }
+
+  function applyStrike(): void {
+    const state = gameState.value
+    state.strikeCount += 1
+
+    if (state.strikeCount >= state.strikeLimit) {
+      state.isStrikeOut = true
+      if (state.strikeRound === 2) {
+        state.isGameOver = true
+      }
+    }
+  }
+
+  function useSecondChance(): void {
+    const state = gameState.value
+    if (!state.isStrikeOut || state.strikeRound !== 1) return
+
+    state.strikeRound = 2
+    state.strikeCount = 0
+    state.isStrikeOut = false
+  }
+
+  function endGame(): void {
+    const state = gameState.value
+    state.isGameOver = true
+    state.isStrikeOut = false
   }
 
   /**
@@ -106,7 +141,7 @@ export function useGame() {
    */
   function placeNumber(value: number): void {
     const state = gameState.value
-    if (!state.puzzle || !state.activeCell) return
+    if (!state.puzzle || !state.activeCell || state.isGameOver || state.isStrikeOut) return
 
     const { row, col } = state.activeCell
     const cell = state.puzzle.grid[row][col]
@@ -152,6 +187,8 @@ export function useGame() {
 
         // Remove this number from pencil notes in related cells
         removeNotesFromRelatedCells(row, col, value)
+      } else {
+        applyStrike()
       }
 
       // Record move
@@ -175,7 +212,7 @@ export function useGame() {
    */
   function eraseCell(): void {
     const state = gameState.value
-    if (!state.puzzle || !state.activeCell) return
+    if (!state.puzzle || !state.activeCell || state.isGameOver || state.isStrikeOut) return
 
     const { row, col } = state.activeCell
     const cell = state.puzzle.grid[row][col]
@@ -209,7 +246,7 @@ export function useGame() {
    */
   function undo(): void {
     const state = gameState.value
-    if (!state.puzzle || state.history.length === 0) return
+    if (!state.puzzle || state.history.length === 0 || state.isGameOver || state.isStrikeOut) return
 
     const move = state.history.pop()!
     const { row, col } = move.cell
@@ -315,15 +352,23 @@ export function useGame() {
     pencilMode,
     canUndo,
     isSolved,
+    strikeCount,
+    strikeLimit,
+    strikeRound,
+    isStrikeOut,
+    isGameOver,
 
     // Actions
     newGame,
+    resetGame,
     selectCell,
     clearSelection,
     togglePencilMode,
     placeNumber,
     eraseCell,
     undo,
+    useSecondChance,
+    endGame,
 
     // Helpers
     getRelatedCells,

@@ -157,7 +157,8 @@ export function isPuzzleSolved(grid: Cell[][], solution?: number[][]): boolean {
 export function getCompletedRows(grid: Cell[][]): Set<number> {
   const completed = new Set<number>()
   for (let row = 0; row < 9; row++) {
-    if (isRowComplete(grid, row)) {
+    const hasError = grid[row].some((cell) => cell.state === 'error')
+    if (!hasError && isRowComplete(grid, row)) {
       completed.add(row)
     }
   }
@@ -170,7 +171,14 @@ export function getCompletedRows(grid: Cell[][]): Set<number> {
 export function getCompletedCols(grid: Cell[][]): Set<number> {
   const completed = new Set<number>()
   for (let col = 0; col < 9; col++) {
-    if (isColumnComplete(grid, col)) {
+    let hasError = false
+    for (let row = 0; row < 9; row++) {
+      if (grid[row][col].state === 'error') {
+        hasError = true
+        break
+      }
+    }
+    if (!hasError && isColumnComplete(grid, col)) {
       completed.add(col)
     }
   }
@@ -183,7 +191,21 @@ export function getCompletedCols(grid: Cell[][]): Set<number> {
 export function getCompletedBoxes(grid: Cell[][]): Set<number> {
   const completed = new Set<number>()
   for (let box = 0; box < 9; box++) {
-    if (isBoxComplete(grid, box)) {
+    const boxRow = Math.floor(box / 3) * 3
+    const boxCol = (box % 3) * 3
+    let hasError = false
+
+    for (let row = boxRow; row < boxRow + 3; row++) {
+      for (let col = boxCol; col < boxCol + 3; col++) {
+        if (grid[row][col].state === 'error') {
+          hasError = true
+          break
+        }
+      }
+      if (hasError) break
+    }
+
+    if (!hasError && isBoxComplete(grid, box)) {
       completed.add(box)
     }
   }

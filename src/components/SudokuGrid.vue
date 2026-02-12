@@ -54,6 +54,9 @@ const animationCells = ref<Set<string>>(new Set())
 const previousRows = ref<Set<number>>(new Set())
 const previousCols = ref<Set<number>>(new Set())
 const previousBoxes = ref<Set<number>>(new Set())
+const animatedRowsEver = ref<Set<number>>(new Set())
+const animatedColsEver = ref<Set<number>>(new Set())
+const animatedBoxesEver = ref<Set<number>>(new Set())
 
 const animationDurationMs = 500
 const stepDelayMs = 40
@@ -117,8 +120,15 @@ function animateBox(box: number): void {
 watch(
   () => props.completedRows,
   (rows) => {
-    const added = [...rows].filter((row) => !previousRows.value.has(row))
-    added.forEach((row) => animateRow(row))
+    const added = [...rows].filter(
+      (row) => !previousRows.value.has(row) && !animatedRowsEver.value.has(row)
+    )
+    added.forEach((row) => {
+      animateRow(row)
+      const next = new Set(animatedRowsEver.value)
+      next.add(row)
+      animatedRowsEver.value = next
+    })
     previousRows.value = new Set(rows)
   }
 )
@@ -126,8 +136,15 @@ watch(
 watch(
   () => props.completedCols,
   (cols) => {
-    const added = [...cols].filter((col) => !previousCols.value.has(col))
-    added.forEach((col) => animateCol(col))
+    const added = [...cols].filter(
+      (col) => !previousCols.value.has(col) && !animatedColsEver.value.has(col)
+    )
+    added.forEach((col) => {
+      animateCol(col)
+      const next = new Set(animatedColsEver.value)
+      next.add(col)
+      animatedColsEver.value = next
+    })
     previousCols.value = new Set(cols)
   }
 )
@@ -135,9 +152,29 @@ watch(
 watch(
   () => props.completedBoxes,
   (boxes) => {
-    const added = [...boxes].filter((box) => !previousBoxes.value.has(box))
-    added.forEach((box) => animateBox(box))
+    const added = [...boxes].filter(
+      (box) => !previousBoxes.value.has(box) && !animatedBoxesEver.value.has(box)
+    )
+    added.forEach((box) => {
+      animateBox(box)
+      const next = new Set(animatedBoxesEver.value)
+      next.add(box)
+      animatedBoxesEver.value = next
+    })
     previousBoxes.value = new Set(boxes)
+  }
+)
+
+watch(
+  () => props.grid,
+  () => {
+    previousRows.value = new Set()
+    previousCols.value = new Set()
+    previousBoxes.value = new Set()
+    animatedRowsEver.value = new Set()
+    animatedColsEver.value = new Set()
+    animatedBoxesEver.value = new Set()
+    animationCells.value = new Set()
   }
 )
 
