@@ -13,6 +13,49 @@ import {
 } from './validator'
 
 export function useGame() {
+  const STORAGE_KEY = 'sudoku-lite:game-state'
+  const STORAGE_VERSION = 1
+
+  type SerializedCell = {
+    row: number
+    col: number
+    box: number
+    value: number | null
+    given: boolean
+    notes: number[]
+    state: 'empty' | 'filled' | 'error'
+  }
+
+  type SerializedMove = {
+    cell: { row: number; col: number }
+    previousValue: number | null
+    nextValue: number | null
+    previousNotes: number[]
+    nextNotes: number[]
+    timestamp: number
+  }
+
+  type SerializedPuzzle = {
+    id: string
+    difficulty: Difficulty
+    grid: SerializedCell[][]
+    solution: number[][]
+    cluesCount: number
+  }
+
+  type SerializedGameState = {
+    version: number
+    puzzle: SerializedPuzzle | null
+    activeCell: { row: number; col: number } | null
+    pencilMode: boolean
+    history: SerializedMove[]
+    strikeCount: number
+    strikeLimit: number
+    strikeRound: 1 | 2
+    isStrikeOut: boolean
+    isGameOver: boolean
+  }
+
   const buildState = (puzzle: Puzzle | null): GameState => ({
     puzzle,
     activeCell: null,
@@ -45,15 +88,139 @@ export function useGame() {
   const isStrikeOut = computed(() => gameState.value.isStrikeOut)
   const isGameOver = computed(() => gameState.value.isGameOver)
 
+  function serializeGameState(state: GameState): SerializedGameState {
+    return {
+      version: STORAGE_VERSION,
+      puzzle: state.puzzle
+        ? {
+            id: state.puzzle.id,
+            difficulty: state.puzzle.difficulty,
+            grid: state.puzzle.grid.map((row) =>
+              row.map((cell) => ({
+                row: cell.row,
+                col: cell.col,
+                box: cell.box,
+                value: cell.value,
+                given: cell.given,
+                notes: [...cell.notes],
+                state: cell.state
+              }))
+            ),
+            solution: state.puzzle.solution,
+            cluesCount: state.puzzle.cluesCount
+          }
+        : null,
+      activeCell: state.activeCell,
+      pencilMode: state.pencilMode,
+      history: state.history.map((move) => ({
+        cell: move.cell,
+        previousValue: move.previousValue,
+        nextValue: move.nextValue,
+        previousNotes: [...move.previousNotes],
+        nextNotes: [...move.nextNotes],
+        timestamp: move.timestamp
+      })),
+      strikeCount: state.strikeCount,
+      strikeLimit: state.strikeLimit,
+      strikeRound: state.strikeRound,
+      isStrikeOut: state.isStrikeOut,
+      isGameOver: state.isGameOver
+    }
+  }
+
+  function deserializeGameState(serialized: SerializedGameState): GameState | null {
+    if (!serialized || serialized.version !== STORAGE_VERSION) return null
+
+    const puzzle = serialized.puzzle
+      ? {
+          id: serialized.puzzle.id,
+          difficulty: serialized.puzzle.difficulty,
+          grid: serialized.puzzle.grid.map((row) =>
+            row.map((cell) => ({
+              row: cell.row,
+              col: cell.col,
+              box: cell.box,
+              value: cell.value,
+              given: cell.given,
+              notes: new Set(cell.notes),
+              state: cell.state
+            }))
+          ),
+          solution: serialized.puzzle.solution,
+          cluesCount: serialized.puzzle.cluesCount
+        }
+      : null
+
+    return {
+      puzzle,
+      activeCell: serialized.activeCell,
+      pencilMode: serialized.pencilMode,
+      history: serialized.history.map((move) => ({
+        cell: move.cell,
+        previousValue: move.previousValue,
+        nextValue: move.nextValue,
+        previousNotes: new Set(move.previousNotes),
+        nextNotes: new Set(move.nextNotes),
+        timestamp: move.timestamp
+      })),
+      completedRows: new Set(),
+      completedCols: new Set(),
+      completedBoxes: new Set(),
+      isSolved: false,
+      strikeCount: serialized.strikeCount,
+      strikeLimit: serialized.strikeLimit,
+      strikeRound: serialized.strikeRound,
+      isStrikeOut: serialized.isStrikeOut,
+      isGameOver: serialized.isGameOver
+    }
+  }
+
+  function saveState(): void {
+    try {
+      const state = gameState.value
+      const payload = serializeGameState(state)
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+    } catch {
+      // Ignore storage errors (quota, private mode)
+    }
+  }
+
+  function clearSavedState(): void {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  function loadSavedState(): void {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as SerializedGameState
+      const restored = deserializeGameState(parsed)
+      if (!restored) return
+      gameState.value = restored
+      updateGameState()
+    } catch {
+      // Ignore storage errors or corrupt data
+    }
+  }
+
+  loadSavedState()
+
   /**
    * Start a new game with selected difficulty
    */
   function newGame(difficulty: Difficulty): void {
     const newPuzzle = generatePuzzle(difficulty)
+    clearSavedState()
     gameState.value = buildState(newPuzzle)
+    saveState()
   }
 
   function resetGame(): void {
+    clearSavedState()
     gameState.value = buildState(null)
   }
 
@@ -63,6 +230,7 @@ export function useGame() {
   function selectCell(row: number, col: number): void {
     if (gameState.value.isGameOver || gameState.value.isStrikeOut) return
     gameState.value.activeCell = { row, col }
+    saveState()
   }
 
   /**
@@ -70,6 +238,7 @@ export function useGame() {
    */
   function clearSelection(): void {
     gameState.value.activeCell = null
+    saveState()
   }
 
   /**
@@ -78,6 +247,7 @@ export function useGame() {
   function togglePencilMode(): void {
     if (gameState.value.isGameOver || gameState.value.isStrikeOut) return
     gameState.value.pencilMode = !gameState.value.pencilMode
+    saveState()
   }
 
   function applyStrike(): void {
@@ -99,12 +269,14 @@ export function useGame() {
     state.strikeRound = 2
     state.strikeCount = 0
     state.isStrikeOut = false
+    saveState()
   }
 
   function endGame(): void {
     const state = gameState.value
     state.isGameOver = true
     state.isStrikeOut = false
+    saveState()
   }
 
   /**
@@ -169,6 +341,7 @@ export function useGame() {
         timestamp: Date.now()
       }
       state.history.push(move)
+      saveState()
     } else {
       // Place number
       const previousValue = cell.value
@@ -204,6 +377,7 @@ export function useGame() {
 
       // Validate and check completion
       updateGameState()
+      saveState()
     }
   }
 
@@ -239,6 +413,7 @@ export function useGame() {
 
     // Validate
     updateGameState()
+    saveState()
   }
 
   /**
@@ -258,6 +433,7 @@ export function useGame() {
 
     // Validate
     updateGameState()
+    saveState()
   }
 
   /**

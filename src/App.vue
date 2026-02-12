@@ -742,6 +742,21 @@ onUnmounted(() => {
   }
 }
 
+@media (max-width: 900px) and (orientation: portrait) {
+  .app-title {
+    font-size: 2rem;
+  }
+
+  .app-header {
+    align-items: center;
+  }
+
+  .header-controls {
+    align-self: auto;
+    margin-top: 0;
+  }
+}
+
 .content-section {
   max-width: 800px;
   margin: var(--space-xl) auto;
@@ -779,7 +794,7 @@ onUnmounted(() => {
 .content-section p {
   line-height: 1.8;
   margin-bottom: var(--space-md);
-  color: var(--color-secondary);
+  color: #3f5364;
 }
 
 .content-section ul {
@@ -791,7 +806,7 @@ onUnmounted(() => {
 .content-section li {
   margin-bottom: var(--space-sm);
   line-height: 1.6;
-  color: var(--color-secondary);
+  color: #3f5364;
 }
 
 .app-footer {
