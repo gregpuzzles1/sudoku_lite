@@ -7,21 +7,44 @@
         </h1>
       </div>
       <div class="header-controls">
-        <select
+        <div
           id="difficulty-select"
-          v-model="dropdownValue"
-          class="new-game-select"
-          :disabled="isGenerating"
-          @change="handleDifficultyChange"
+          ref="difficultyMenuRef"
+          class="difficulty-menu"
+          @focusout="handleDifficultyFocusOut"
         >
-          <option value="" disabled selected hidden>{{ isGenerating ? 'Generating...' : 'New Game' }}</option>
-          <option value="Beginner">Beginner</option>
-          <option value="Intermediate">Intermediate</option>
-          <option value="Advanced">Advanced</option>
-          <option value="Expert">Expert</option>
-          <option value="Master">Master</option>
-          <option value="Extreme">Extreme</option>
-        </select>
+          <button
+            type="button"
+            class="new-game-select"
+            :disabled="isGenerating"
+            :aria-expanded="showDifficultyMenu"
+            aria-haspopup="listbox"
+            @click="toggleDifficultyMenu"
+          >
+            {{ isGenerating ? 'Generating...' : 'New Game' }}
+          </button>
+          <ul
+            v-if="showDifficultyMenu"
+            class="difficulty-options"
+            role="listbox"
+            aria-label="Difficulty levels"
+          >
+            <li
+              v-for="difficulty in difficultyOptions"
+              :key="difficulty"
+              role="option"
+              :aria-selected="selectedDifficulty === difficulty"
+            >
+              <button
+                type="button"
+                class="difficulty-option"
+                @click="handleDifficultySelect(difficulty)"
+              >
+                {{ difficulty }}
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
     </header>
 
@@ -218,7 +241,9 @@ const {
 } = useGame()
 
 const selectedDifficulty = ref<Difficulty>('Intermediate')
-const dropdownValue = ref<string>('')
+const difficultyOptions: Difficulty[] = ['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master', 'Extreme']
+const showDifficultyMenu = ref(false)
+const difficultyMenuRef = ref<HTMLElement | null>(null)
 const currentYear = computed(() => new Date().getFullYear())
 const copyrightYears = computed(() => `2025-${currentYear.value}`)
 const showWinModal = ref(false)
@@ -309,28 +334,38 @@ const gridToRender = computed(() => (puzzle.value ? grid.value : emptyGrid.value
 async function handleNewGame() {
   if (isGenerating.value) return
   isGenerating.value = true
+  showDifficultyMenu.value = false
   showWinModal.value = false
   await nextTick()
   setTimeout(() => {
     resetGame()
-    dropdownValue.value = ''
     isGenerating.value = false
   }, 0)
 }
 
-async function handleDifficultyChange() {
-  if (dropdownValue.value && dropdownValue.value !== '') {
-    selectedDifficulty.value = dropdownValue.value as Difficulty
-    if (isGenerating.value) return
-    isGenerating.value = true
-    showWinModal.value = false
-    await nextTick()
-    setTimeout(() => {
-      newGame(selectedDifficulty.value)
-      isGenerating.value = false
-      dropdownValue.value = ''
-    }, 0)
+function toggleDifficultyMenu() {
+  if (isGenerating.value) return
+  showDifficultyMenu.value = !showDifficultyMenu.value
+}
+
+function handleDifficultyFocusOut(event: FocusEvent) {
+  const nextTarget = event.relatedTarget as Node | null
+  if (difficultyMenuRef.value && !difficultyMenuRef.value.contains(nextTarget)) {
+    showDifficultyMenu.value = false
   }
+}
+
+async function handleDifficultySelect(difficulty: Difficulty) {
+  if (isGenerating.value) return
+  selectedDifficulty.value = difficulty
+  showDifficultyMenu.value = false
+  isGenerating.value = true
+  showWinModal.value = false
+  await nextTick()
+  setTimeout(() => {
+    newGame(selectedDifficulty.value)
+    isGenerating.value = false
+  }, 0)
 }
 
 function handleSecondChance() {
@@ -530,6 +565,10 @@ onUnmounted(() => {
   justify-content: flex-end;
 }
 
+.difficulty-menu {
+  position: relative;
+}
+
 .new-game-wrapper {
   display: flex;
   align-items: center;
@@ -555,6 +594,7 @@ onUnmounted(() => {
   cursor: pointer;
   width: 200px;
   transition: background-color var(--transition-fast);
+  text-align: left;
 }
 
 .new-game-select:hover:not(:disabled) {
@@ -571,15 +611,42 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.new-game-select option {
-  background-color: white;
-  color: var(--color-text);
-  font-weight: normal;
-  padding: var(--space-sm);
+.new-game-select::after {
+  content: '';
+  position: absolute;
 }
 
-.new-game-select option:hover {
-  background-color: var(--color-highlight);
+.difficulty-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  z-index: 20;
+}
+
+.difficulty-option {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--color-text);
+  background-color: #ffffff;
+  cursor: pointer;
+}
+
+.difficulty-option:hover,
+.difficulty-option:focus-visible {
+  background-color: var(--color-given);
+  color: #ffffff;
+  outline: none;
 }
 
 .game-area {
