@@ -48,12 +48,12 @@
       </div>
     </header>
 
-    <main class="app-main">
+    <main class="app-main" @click.self="clearSelection">
 
       <div class="game-area">
         <div class="grid-wrapper">
           <div
-            v-if="puzzle"
+            v-if="puzzle && selectedDifficulty"
             class="difficulty-label"
             aria-live="polite"
           >
@@ -229,6 +229,7 @@ const {
   isGameOver,
   newGame,
   selectCell,
+  clearSelection,
   placeNumber,
   togglePencilMode,
   undo,
@@ -240,7 +241,7 @@ const {
   resetGame
 } = useGame()
 
-const selectedDifficulty = ref<Difficulty>('Intermediate')
+const selectedDifficulty = ref<Difficulty | null>(null)
 const difficultyOptions: Difficulty[] = ['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Master', 'Extreme']
 const showDifficultyMenu = ref(false)
 const difficultyMenuRef = ref<HTMLElement | null>(null)
@@ -336,6 +337,7 @@ async function handleNewGame() {
   isGenerating.value = true
   showDifficultyMenu.value = false
   showWinModal.value = false
+  selectedDifficulty.value = null
   await nextTick()
   setTimeout(() => {
     resetGame()
@@ -363,7 +365,7 @@ async function handleDifficultySelect(difficulty: Difficulty) {
   showWinModal.value = false
   await nextTick()
   setTimeout(() => {
-    newGame(selectedDifficulty.value)
+    newGame(difficulty)
     isGenerating.value = false
   }, 0)
 }

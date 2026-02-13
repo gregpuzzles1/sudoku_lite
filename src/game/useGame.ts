@@ -15,6 +15,7 @@ import {
 export function useGame() {
   const STORAGE_KEY = 'sudoku-lite:game-state'
   const STORAGE_VERSION = 1
+  const RESTORE_SAVED_GAME_ON_LOAD = false
 
   type SerializedCell = {
     row: number
@@ -195,6 +196,11 @@ export function useGame() {
 
   function loadSavedState(): void {
     try {
+      if (!RESTORE_SAVED_GAME_ON_LOAD) {
+        clearSavedState()
+        return
+      }
+
       const raw = window.localStorage.getItem(STORAGE_KEY)
       if (!raw) return
       const parsed = JSON.parse(raw) as SerializedGameState
