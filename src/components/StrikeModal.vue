@@ -13,7 +13,7 @@
             Game Over
           </h2>
           <p class="modal-message">
-            You have striked out.
+            You have struck out!
           </p>
           <button
             class="modal-button"
