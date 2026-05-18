@@ -126,7 +126,7 @@ function handleClick() {
 .cell-notes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   width: 100%;
   height: 100%;
   padding: 2px;
@@ -138,6 +138,9 @@ function handleClick() {
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
+  line-height: 1;
+  min-width: 0;
+  min-height: 0;
   color: var(--color-secondary);
 }
 
